@@ -7,16 +7,36 @@
 //
 
 import UIKit
-import CoreData
+import RealmSwift
 
 class CategoryTableViewController: UITableViewController {
-    var categories = [Category]()
-    let context  = (UIApplication.shared.delegate as! AppDelegate).persistentContainer.viewContext
+    let realm = try! Realm()
+    
+    var categories: Results<Category>?
+    
     override func viewDidLoad() {
         super.viewDidLoad()
         loadCategories()
+    }
+    
+    func loadCategories(){
+        categories = realm.objects(Category.self)
+        tableView.reloadData()
         
-
+    }
+    
+    func saveCategories(withCategory category: Category){
+        
+        do{
+            try realm.write {
+                realm.add(category)
+            }
+            
+        }catch{
+            print("error saving context \(error)")
+        }
+        self.tableView.reloadData()
+        
     }
 
     @IBAction func addButtonPressed(_ sender: UIBarButtonItem) {
@@ -27,11 +47,11 @@ class CategoryTableViewController: UITableViewController {
             if let text = textField.text{
                 //self.itemArray.append(text)
                 if text != ""{
-                    let newCategory = Category(context: self.context)
+                    let newCategory = Category()
                     newCategory.name = text
                     
-                    self.categories.append(newCategory)
-                    self.saveCategories()
+                    
+                    self.saveCategories(withCategory: newCategory)
                 }else{
                     textField.endEditing(true)
                     
@@ -46,32 +66,15 @@ class CategoryTableViewController: UITableViewController {
         present(alert, animated: true, completion: nil)
     }
     
-    func loadCategories(){
-        //soecify data type
-        let request: NSFetchRequest<Category> = Category.fetchRequest()
-        tableView.reloadData()
-        fetchRequest(request: request)
-        
-    }
-    func saveCategories(){
-        
-        do{
-            try context.save()
-            
-        }catch{
-            print("error saving context \(error)")
-        }
-        self.tableView.reloadData()
-        
-    }
-    func fetchRequest(request: NSFetchRequest<Category>){
-        do {
-            categories = try context.fetch(request)
-        } catch  {
-            print("error \(error)")
-        }
-        
-    }
+    
+//    func fetchRequest(request: NSFetchRequest<Category>){
+//        do {
+//            categories = try context.fetch(request)
+//        } catch  {
+//            print("error \(error)")
+//        }
+//
+//    }
     
     
     
@@ -82,22 +85,29 @@ class CategoryTableViewController: UITableViewController {
 
     override func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
         // #warning Incomplete implementation, return the number of rows
-        return categories.count
+        return categories?.count ?? 1
     }
+    
     override func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         let cell = tableView.dequeueReusableCell(withIdentifier: "categoryCell", for: indexPath)
-        let category = categories[indexPath.row]
+        if let category = categories?[indexPath.row]{
         cell.textLabel?.text = category.name
+        }else{
+            cell.textLabel?.text = "No Categories Added Yet"
+        }
         
         return cell
     }
+    
     override func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         performSegue(withIdentifier: "gotoItem", sender: self)
     }
+    
     override func prepare(for segue: UIStoryboardSegue, sender: Any?) {
         let destinationVC = segue.destination as! TodoListViewController
-        if let indexPath = tableView.indexPathForSelectedRow{
-            destinationVC.selectedCategory = categories[indexPath.row]
+        if let indexPath = tableView.indexPathForSelectedRow, let category = categories?[indexPath.row]{
+            
+            destinationVC.selectedCategory = category
         }
     }
     
